@@ -329,78 +329,78 @@ button:disabled {
   100% { transform: scale(1); }
 }
 
-/* ---------- Year ---------- */
+/* ---------- Year: one continuous strip per year, weeks as columns ---------- */
 
 .year {
   flex: 1 1 0;
   min-height: 0;
-  display: grid;
-  grid-template-columns: repeat(3, auto);
-  justify-content: space-between;
-  align-content: start;
-  gap: 14px;
-}
-
-.mm {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  border-radius: 6px;
-  text-align: left;
+  gap: 20px;
+  overflow-y: auto;
+  --c: 5px;
+  --g: 1.5px;
 }
 
-.mm-head {
+.yb {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.yb-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  font: 700 13px/1 var(--ui);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+}
+
+.yb-year {
+  font: 800 24px/1 var(--display);
+}
+
+.yb-count {
+  font: 500 14px/1 var(--ui);
   color: var(--muted);
-}
-
-.mm.is-current .mm-head {
-  color: var(--chalk);
-}
-
-.mm-count {
-  font: 800 15px/1 var(--display);
-  letter-spacing: 0;
-  color: var(--chalk);
   font-variant-numeric: tabular-nums;
 }
 
-.mm-count.zero {
+.yb-grid {
+  display: grid;
+  grid-template-columns: 24px repeat(54, var(--c));
+  grid-template-rows: 13px repeat(7, var(--c));
+  gap: var(--g);
+}
+
+.yb-grid .ml {
+  grid-row: 1;
+  text-align: left;
+  font: 600 10px/13px var(--ui);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.yb-grid .dl {
+  grid-column: 1;
+  align-self: center;
+  font: 600 9px/1 var(--ui);
   color: var(--faint);
 }
 
-.mm-grid {
-  display: grid;
-  grid-template-columns: repeat(7, var(--dw, 12px));
-  grid-auto-rows: var(--dh, 12px);
-  gap: 2px;
-}
-
-.mm-grid i {
-  border-radius: 2px;
+.yb-grid i {
+  border-radius: 1px;
   background: var(--tile-2);
 }
 
-.mm-grid i.on {
+.yb-grid i.on {
   background: var(--accent);
 }
 
-.mm-grid i.fut {
-  background: transparent;
-  box-shadow: inset 0 0 0 1px var(--tile-2);
+.yb-grid i.fut {
+  background: var(--tile);
 }
 
-.mm-grid i.pad {
-  background: transparent;
-}
-
-.mm-grid i.today {
-  box-shadow: 0 0 0 1.5px var(--chalk);
+.yb-grid i.today {
+  box-shadow: 0 0 0 1px var(--chalk);
 }
 
 /* ---------- Footer ---------- */
@@ -756,51 +756,52 @@ button:disabled {
   }
 
   function renderYear() {
-    const y = state.y;
     const set = data[state.habit];
-    const name = labelOf(state.habit);
+    const name = labelOf(state.habit).toLowerCase();
     let html = '';
-    for (let m = 0; m < 12; m++) {
-      const off = firstDow(y, m);
-      const dim = daysIn(y, m);
+    for (let yr = state.y; yr > state.y - 3; yr--) {
+      const off = firstDow(yr, 0);
+      let labels = '';
       let cells = '';
       let count = 0;
-      for (let i = 0; i < off; i++) cells += '<i class="pad"></i>';
-      for (let d = 1; d <= dim; d++) {
-        const k = keyOf(y, m, d);
-        let cls = '';
-        if (set.has(k)) { cls = 'on'; count++; } else if (k > now.key) cls = 'fut';
-        if (k === now.key) cls += ' today';
-        cells += cls ? '<i class="' + cls.trim() + '"></i>' : '<i></i>';
+      let i = 0;
+      for (let m = 0; m < 12; m++) {
+        const dim = daysIn(yr, m);
+        for (let d = 1; d <= dim; d++, i++) {
+          const k = keyOf(yr, m, d);
+          const pos = i + off;
+          const col = Math.floor(pos / 7) + 2;
+          const row = (pos % 7) + 2;
+          if (d === 1) {
+            labels += '<button type="button" class="ml" data-y="' + yr + '" data-m="' + m + '"' +
+              ' style="grid-column:' + col + ' / span 4" aria-label="Open ' + MONTHS[m] + ' ' + yr + '">' +
+              MONTHS[m].slice(0, 3) + '</button>';
+          }
+          let cls = '';
+          if (set.has(k)) { cls = 'on'; count++; } else if (k > now.key) cls = 'fut';
+          if (k === now.key) cls += ' today';
+          cells += '<i data-y="' + yr + '" data-m="' + m + '"' + (cls ? ' class="' + cls.trim() + '"' : '') +
+            ' style="grid-area:' + row + ' / ' + col + '"></i>';
+        }
       }
-      for (let i = off + dim; i < 42; i++) cells += '<i class="pad"></i>';
-
-      const started = keyOf(y, m, 1) <= now.key;
-      const isCurrent = y === now.y && m === now.m;
-      html += '<button type="button" class="mm' + (isCurrent ? ' is-current' : '') + '" data-month="' + m + '"' +
-        ' aria-label="' + MONTHS[m] + ' ' + y + ', ' + count + ' ' + name + ' day' + (count === 1 ? '' : 's') + '">' +
-        '<span class="mm-head"><span>' + MONTHS[m].slice(0, 3) + '</span>' +
-        '<span class="mm-count' + (count ? '' : ' zero') + '">' + (started ? count : '') + '</span></span>' +
-        '<span class="mm-grid" aria-hidden="true">' + cells + '</span></button>';
+      html += '<section class="yb"><div class="yb-head"><span class="yb-year">' + yr + '</span>' +
+        '<span class="yb-count">' + count + ' ' + name + ' day' + (count === 1 ? '' : 's') + '</span></div>' +
+        '<div class="yb-grid">' +
+        '<span class="dl" style="grid-area:2 / 1">Mon</span><span class="dl" style="grid-area:4 / 1">Wed</span>' +
+        '<span class="dl" style="grid-area:6 / 1">Fri</span><span class="dl" style="grid-area:8 / 1">Sun</span>' +
+        labels + cells + '</div></section>';
     }
     el.year.innerHTML = html;
     sizeYear();
   }
 
-  /* Fit twelve mini months (3 x 4, six week rows each) into the space left on screen. */
+  /* Size the squares so 54 week columns fill the screen width. */
   function sizeYear() {
     if (state.view !== 'year') return;
     const W = el.year.clientWidth;
-    const H = el.year.clientHeight;
-    if (!W || !H) return;
-    const gap = 14;
-    const dot = 2;
-    const head = 13 + 6;
-    const byW = (W - 2 * gap - 3 * 6 * dot) / 21;
-    const byH = (H - 3 * gap - 4 * (head + 5 * dot)) / 24;
-    const fit = (v) => Math.floor(Math.max(6, Math.min(22, v)) * 4) / 4;
-    el.year.style.setProperty('--dw', fit(Math.min(byW, byH * 1.25)) + 'px');
-    el.year.style.setProperty('--dh', fit(Math.min(byH, byW * 1.25)) + 'px');
+    if (!W) return;
+    const c = Math.floor(Math.max(3, Math.min(14, (W - 24 - 54 * 1.5) / 54)) * 4) / 4;
+    el.year.style.setProperty('--c', c + 'px');
   }
 
   function renderStats() {
@@ -850,9 +851,10 @@ button:disabled {
   el.grid.addEventListener('animationend', (e) => e.target.classList.remove('pop'));
 
   el.year.addEventListener('click', (e) => {
-    const b = e.target.closest('.mm');
-    if (!b) return;
-    state.m = Number(b.dataset.month);
+    const t = e.target.closest('[data-m]');
+    if (!t) return;
+    state.y = Number(t.dataset.y);
+    state.m = Number(t.dataset.m);
     state.view = 'month';
     render();
   });
@@ -927,6 +929,7 @@ button:disabled {
   }
   render();
 })();
+
 
 </script>
 <script>

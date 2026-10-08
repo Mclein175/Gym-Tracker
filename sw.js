@@ -1,5 +1,5 @@
 // Offline support: every file the app needs is cached on first visit.
-const CACHE = 'gym-bed-revise-a09624121d';
+const CACHE = 'gym-bed-revise-f334f7d81b';
 const ASSETS = [
   "./",
   "fonts/barlow-semi-condensed-500.woff2",
